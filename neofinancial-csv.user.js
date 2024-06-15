@@ -345,11 +345,16 @@ function transactionsToCsvBlob(transactions) {
     }
 
     let amountCentsStr = amountCents.toString();
+    let amount = "";
     // Insert decimal separator into a string to avoid any shenanigans with floating point numbers
-    let amount =
-      amountCentsStr.substring(0, amountCentsStr.length - 2) +
-      "." +
-      amountCentsStr.substring(amountCentsStr.length - 2);
+    if (amountCentsStr.length > 2) {
+      amount =
+        amountCentsStr.substring(0, amountCentsStr.length - 2) +
+        "." +
+        amountCentsStr.substring(amountCentsStr.length - 2);
+    } else {
+      amount = `0.${amountCentsStr}`;
+    }
 
     let notes = transaction.description;
 
