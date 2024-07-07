@@ -75,42 +75,42 @@ const creditTransactionQuery = `
  * @returns {Promise<[Transaction]>}
  */
 async function creditTransactions(accountId) {
-  let transactions = [];
-  let hasNextPage = true;
-  let cursor = undefined;
-  while (hasNextPage) {
-    let respJson = await GM.xmlHttpRequest({
-      url: "https://api.production.neofinancial.com/graphql",
-      method: "POST",
-      responseType: "json",
-      headers: {
-        "content-type": "application/json",
-      },
-      data: JSON.stringify({
-        operationName: "TransactionsList",
-        query: creditTransactionQuery,
-        variables: {
-          creditAccountId: accountId,
-          input: {
-            cursor: cursor,
-            filter: [],
-            limit: 1000,
-            sort: {
-              direction: "DESC",
-              field: "authorizationProcessedAt",
+    let transactions = [];
+    let hasNextPage = true;
+    let cursor = undefined;
+    while (hasNextPage) {
+        let respJson = await GM.xmlHttpRequest({
+            url: "https://api.production.neofinancial.com/graphql",
+            method: "POST",
+            responseType: "json",
+            headers: {
+                "content-type": "application/json",
             },
-          },
-        },
-      }),
-    });
+            data: JSON.stringify({
+                operationName: "TransactionsList",
+                query: creditTransactionQuery,
+                variables: {
+                    creditAccountId: accountId,
+                    input: {
+                        cursor: cursor,
+                        filter: [],
+                        limit: 1000,
+                        sort: {
+                            direction: "DESC",
+                            field: "authorizationProcessedAt",
+                        },
+                    },
+                },
+            }),
+        });
 
-    let resp = JSON.parse(respJson.responseText);
-    let transactionList = resp.data.user.creditAccount.creditTransactionList;
-    hasNextPage = transactionList.hasNextPage;
-    cursor = transactionList.cursor;
-    transactions = transactions.concat(transactionList.results);
-  }
-  return transactions;
+        let resp = JSON.parse(respJson.responseText);
+        let transactionList = resp.data.user.creditAccount.creditTransactionList;
+        hasNextPage = transactionList.hasNextPage;
+        cursor = transactionList.cursor;
+        transactions = transactions.concat(transactionList.results);
+    }
+    return transactions;
 }
 
 /**
@@ -181,42 +181,42 @@ const savingsTransactionQuery = `
  * @returns {Promise<[Transaction]>}
  */
 async function savingsTransactions(accountId) {
-  let transactions = [];
-  let hasNextPage = true;
-  let cursor = undefined;
-  while (hasNextPage) {
-    let respJson = await GM.xmlHttpRequest({
-      url: "https://api.production.neofinancial.com/graphql",
-      method: "POST",
-      responseType: "json",
-      headers: {
-        "content-type": "application/json",
-      },
-      data: JSON.stringify({
-        operationName: "FilteredSortedSavingsTransactionList",
-        query: savingsTransactionQuery,
-        variables: {
-          savingsAccountId: accountId,
-          input: {
-            cursor: cursor,
-            filter: [],
-            limit: 1000,
-            sort: {
-              direction: "DESC",
-              field: "authorizationProcessedAt",
+    let transactions = [];
+    let hasNextPage = true;
+    let cursor = undefined;
+    while (hasNextPage) {
+        let respJson = await GM.xmlHttpRequest({
+            url: "https://api.production.neofinancial.com/graphql",
+            method: "POST",
+            responseType: "json",
+            headers: {
+                "content-type": "application/json",
             },
-          },
-        },
-      }),
-    });
+            data: JSON.stringify({
+                operationName: "FilteredSortedSavingsTransactionList",
+                query: savingsTransactionQuery,
+                variables: {
+                    savingsAccountId: accountId,
+                    input: {
+                        cursor: cursor,
+                        filter: [],
+                        limit: 1000,
+                        sort: {
+                            direction: "DESC",
+                            field: "authorizationProcessedAt",
+                        },
+                    },
+                },
+            }),
+        });
 
-    let resp = JSON.parse(respJson.responseText);
-    let transactionList = resp.data.user.savingsAccount.savingsTransactionList;
-    hasNextPage = transactionList.hasNextPage;
-    cursor = transactionList.cursor;
-    transactions = transactions.concat(transactionList.results);
-  }
-  return transactions;
+        let resp = JSON.parse(respJson.responseText);
+        let transactionList = resp.data.user.savingsAccount.savingsTransactionList;
+        hasNextPage = transactionList.hasNextPage;
+        cursor = transactionList.cursor;
+        transactions = transactions.concat(transactionList.results);
+    }
+    return transactions;
 }
 
 /**
@@ -239,24 +239,24 @@ const accountPersonalizationQuery = `
  * @returns {Promise<string>}
  */
 async function savingsAccountName(accountId) {
-  let respJson = await GM.xmlHttpRequest({
-    url: "https://api.production.neofinancial.com/graphql",
-    method: "POST",
-    responseType: "json",
-    headers: {
-      "content-type": "application/json",
-    },
-    data: JSON.stringify({
-      operationName: "SavingsAccountPersonalization",
-      query: accountPersonalizationQuery,
-      variables: {
-        savingsAccountId: accountId,
-      },
-    }),
-  });
+    let respJson = await GM.xmlHttpRequest({
+        url: "https://api.production.neofinancial.com/graphql",
+        method: "POST",
+        responseType: "json",
+        headers: {
+            "content-type": "application/json",
+        },
+        data: JSON.stringify({
+            operationName: "SavingsAccountPersonalization",
+            query: accountPersonalizationQuery,
+            variables: {
+                savingsAccountId: accountId,
+            },
+        }),
+    });
 
-  let resp = JSON.parse(respJson.responseText);
-  return resp.data.user.savingsAccount.accountPersonalization.customizedName;
+    let resp = JSON.parse(respJson.responseText);
+    return resp.data.user.savingsAccount.accountPersonalization.customizedName;
 }
 
 /**
@@ -264,117 +264,117 @@ async function savingsAccountName(accountId) {
  * @returns {Blob}
  */
 function transactionsToCsvBlob(transactions) {
-  let csv = `"Date","Payee","Notes","Category","Amount"\n`;
-  for (const transaction of transactions) {
-    let date = new Date(transaction.authorizationProcessedAt);
-    // JS Date type is absolutly horible, I hope Temporal API will be better
-    let dateStr = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    let csv = `"Date","Payee","Notes","Category","Amount"\n`;
+    for (const transaction of transactions) {
+        let date = new Date(transaction.authorizationProcessedAt);
+        // JS Date type is absolutly horible, I hope Temporal API will be better
+        let dateStr = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
-    let payee = null;
-    let category = transaction.category;
-    // Assume that transaction is a purchase by default
-    let amountCents = -transaction.amountCents;
+        let payee = null;
+        let category = transaction.category;
+        // Assume that transaction is a purchase by default
+        let amountCents = -transaction.amountCents;
 
-    switch (transaction.category) {
-      case "PURCHASE":
-        payee = transaction.merchantDetails.description;
-        category = transaction.merchantDetails.category;
-        break;
-      case "NEO_STORE_PURCHASE":
-        payee = "Neo Financial";
-        category = "PURCHASE";
-        break;
-      case "REWARDS_ACCOUNT_CASH_OUT":
-        payee = "Neo Financial";
-        category = "PAYMENT";
-        amountCents = transaction.amountCents;
-        break;
-      case "REFUND":
-        payee = transaction.merchantDetails.description;
-        category = transaction.merchantDetails.category;
-        amountCents = transaction.amountCents;
-        break;
-      case "PAYMENT":
-        payee = transaction.sourceInformation.friendlyName;
-        amountCents = transaction.amountCents;
-        break;
-      case "WITHDRAWAL":
-        if (transaction.description.search(/Payment to Credit/) !== -1) {
-          payee = "Neo Credit";
-        } else if (transaction.merchantDetails) {
-          payee = transaction.merchantDetails.description;
-          category = transaction.merchantDetails.category;
+        switch (transaction.category) {
+            case "PURCHASE":
+                payee = transaction.merchantDetails.description;
+                category = transaction.merchantDetails.category;
+                break;
+            case "NEO_STORE_PURCHASE":
+                payee = "Neo Financial";
+                category = "PURCHASE";
+                break;
+            case "REWARDS_ACCOUNT_CASH_OUT":
+                payee = "Neo Financial";
+                category = "PAYMENT";
+                amountCents = transaction.amountCents;
+                break;
+            case "REFUND":
+                payee = transaction.merchantDetails.description;
+                category = transaction.merchantDetails.category;
+                amountCents = transaction.amountCents;
+                break;
+            case "PAYMENT":
+                payee = transaction.sourceInformation.friendlyName;
+                amountCents = transaction.amountCents;
+                break;
+            case "WITHDRAWAL":
+                if (transaction.description.search(/Payment to Credit/) !== -1) {
+                    payee = "Neo Credit";
+                } else if (transaction.merchantDetails) {
+                    payee = transaction.merchantDetails.description;
+                    category = transaction.merchantDetails.category;
+                } else {
+                    payee = transaction.transferContactName;
+                }
+                break;
+            case "TRANSFER":
+                if (transaction.transferContactName) {
+                    payee = transaction.transferContactName;
+                } else if (transaction.etransferContactName) {
+                    payee = transaction.etransferContactName;
+                }
+                amountCents = transaction.amountCents;
+                break;
+            case "INTEREST":
+                payee = "Neo Financial";
+                category = "PAYMENT";
+                amountCents = transaction.amountCents;
+                break;
+            case "DEPOSIT":
+                if (transaction.description.search(/Reward Cashed Out/) !== -1) {
+                    payee = "Neo Financial";
+                    category = "PAYMENT";
+                }
+                amountCents = transaction.amountCents;
+                break;
+            default:
+                console.log(
+                    `${dateStr} transaction [${transaction.category}] has unexpected category. Object logged below. Skipping`,
+                );
+                console.log(transaction);
+                continue;
+        }
+
+        if (!payee) {
+            console.log(
+                `${dateStr} transaction [${transaction.category}] could not figure out payee. Object logged below. Skipping`,
+            );
+            console.log(transaction);
+            continue;
+        }
+
+        let amountCentsStr = amountCents.toString();
+        let amount = "";
+        // Insert decimal separator into a string to avoid any shenanigans with floating point numbers
+        if (amountCentsStr.length > 2) {
+            amount =
+                amountCentsStr.substring(0, amountCentsStr.length - 2) +
+                "." +
+                amountCentsStr.substring(amountCentsStr.length - 2);
         } else {
-          payee = transaction.transferContactName;
+            amount = `0.${amountCentsStr}`;
         }
-        break;
-      case "TRANSFER":
-        if (transaction.transferContactName) {
-          payee = transaction.transferContactName;
-        } else if (transaction.etransferContactName) {
-          payee = transaction.etransferContactName;
+
+        let notes = transaction.description;
+
+        let entry = `"${dateStr}","${payee}","${notes}","${category}","${amount}"`;
+
+        // Transaction is not affecting balance, skipping
+        if (!["CONFIRMED", "AUTHORIZED"].includes(transaction.status)) {
+            // Catching unhandled status values.
+            if (!["DECLINED"].includes(transaction.status)) {
+                console.log(
+                    `${dateStr} transaction [${transaction.category}] from "${payee}" has unexpected status: ${transaction.status}. Object logged below. Skipping`,
+                );
+                console.log(transaction);
+            }
+            continue;
         }
-        amountCents = transaction.amountCents;
-        break;
-      case "INTEREST":
-        payee = "Neo Financial";
-        category = "PAYMENT";
-        amountCents = transaction.amountCents;
-        break;
-      case "DEPOSIT":
-        if (transaction.description.search(/Reward Cashed Out/) !== -1) {
-          payee = "Neo Financial";
-          category = "PAYMENT";
-        }
-        amountCents = transaction.amountCents;
-        break;
-      default:
-        console.log(
-          `${dateStr} transaction [${transaction.category}] has unexpected category. Object logged below. Skipping`,
-        );
-        console.log(transaction);
-        continue;
+
+        csv += `${entry}\n`;
     }
-
-    if (!payee) {
-      console.log(
-        `${dateStr} transaction [${transaction.category}] could not figure out payee. Object logged below. Skipping`,
-      );
-      console.log(transaction);
-      continue;
-    }
-
-    let amountCentsStr = amountCents.toString();
-    let amount = "";
-    // Insert decimal separator into a string to avoid any shenanigans with floating point numbers
-    if (amountCentsStr.length > 2) {
-      amount =
-        amountCentsStr.substring(0, amountCentsStr.length - 2) +
-        "." +
-        amountCentsStr.substring(amountCentsStr.length - 2);
-    } else {
-      amount = `0.${amountCentsStr}`;
-    }
-
-    let notes = transaction.description;
-
-    let entry = `"${dateStr}","${payee}","${notes}","${category}","${amount}"`;
-
-    // Transaction is not affecting balance, skipping
-    if (!["CONFIRMED", "AUTHORIZED"].includes(transaction.status)) {
-      // Catching unhandled status values.
-      if (!["DECLINED"].includes(transaction.status)) {
-        console.log(
-          `${dateStr} transaction [${transaction.category}] from "${payee}" has unexpected status: ${transaction.status}. Object logged below. Skipping`,
-        );
-        console.log(transaction);
-      }
-      continue;
-    }
-
-    csv += `${entry}\n`;
-  }
-  return new Blob([csv], { type: "text/csv" });
+    return new Blob([csv], { type: "text/csv" });
 }
 
 // ID for quickly verifying if button was already injected
@@ -386,32 +386,32 @@ const downloadButtonId = "export-transactions-csv";
  * @type {CSSStyleDeclaration}
  */
 const buttonStyle = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  position: "relative",
-  boxSizing: "border-box",
-  backgroundColor: "transparent",
-  outline: "0",
-  border: "0",
-  margin: "0",
-  borderRadius: "4px",
-  padding: "0rem 1rem",
-  cursor: "pointer",
-  userSelect: "none",
-  verticalAlign: "middle",
-  color: "inherit",
-  fontFamily: `TTCommons, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`,
-  fontWeight: "600",
-  fontSize: "1rem",
-  lineHeight: "1.25",
-  letterSpacing: "0.02857em",
-  minWidth: "64px",
-  borderRadius: "4px",
-  backgroundColor: "#EDEEEF",
-  color: "#000000",
-  height: "32px",
-  width: "100%",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    boxSizing: "border-box",
+    backgroundColor: "transparent",
+    outline: "0",
+    border: "0",
+    margin: "0",
+    borderRadius: "4px",
+    padding: "0rem 1rem",
+    cursor: "pointer",
+    userSelect: "none",
+    verticalAlign: "middle",
+    color: "inherit",
+    fontFamily: `TTCommons, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`,
+    fontWeight: "600",
+    fontSize: "1rem",
+    lineHeight: "1.25",
+    letterSpacing: "0.02857em",
+    minWidth: "64px",
+    borderRadius: "4px",
+    backgroundColor: "#EDEEEF",
+    color: "#000000",
+    height: "32px",
+    width: "100%",
 };
 
 /**
@@ -426,22 +426,22 @@ const buttonStyle = {
  * @param {Funcion} buttonCallback
  */
 function addDownloadButton(filtersElement, buttonCallback) {
-  if (filtersElement === null || buttonCallback === null) {
-    return;
-  }
+    if (filtersElement === null || buttonCallback === null) {
+        return;
+    }
 
-  let exportButton = document.createElement("button");
-  exportButton.innerText = "Export transactions as CSV";
-  exportButton.onclick = buttonCallback;
-  Object.assign(exportButton.style, buttonStyle);
-  let exportButtonBox = document.createElement("div");
-  exportButtonBox.className = "MuiBox-root";
-  exportButtonBox.appendChild(exportButton);
-  exportButtonBox.id = downloadButtonId;
+    let exportButton = document.createElement("button");
+    exportButton.innerText = "Export transactions as CSV";
+    exportButton.onclick = buttonCallback;
+    Object.assign(exportButton.style, buttonStyle);
+    let exportButtonBox = document.createElement("div");
+    exportButtonBox.className = "MuiBox-root";
+    exportButtonBox.appendChild(exportButton);
+    exportButtonBox.id = downloadButtonId;
 
-  filtersElement.insertBefore(exportButtonBox, filtersElement.children[0]);
-  filtersElement.style.alignItems = "center";
-  filtersElement.style.gap = "1em";
+    filtersElement.insertBefore(exportButtonBox, filtersElement.children[0]);
+    filtersElement.style.alignItems = "center";
+    filtersElement.style.gap = "1em";
 }
 
 /**
@@ -453,22 +453,22 @@ function addDownloadButton(filtersElement, buttonCallback) {
  * @return {Function}
  */
 function saveBlobToFileCallback(accountName, transactionCallback) {
-  return async () => {
-    console.log("Fetching Transactions");
-    let blob = transactionsToCsvBlob(await transactionCallback());
-    console.log("Writing transactions into a file");
-    let blobUrl = URL.createObjectURL(blob);
-    let now = new Date();
+    return async () => {
+        console.log("Fetching Transactions");
+        let blob = transactionsToCsvBlob(await transactionCallback());
+        console.log("Writing transactions into a file");
+        let blobUrl = URL.createObjectURL(blob);
+        let now = new Date();
 
-    let link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = `Neo ${accountName} Transactions ${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}.csv`;
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(blobUrl);
-  };
+        let link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `Neo ${accountName} Transactions ${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}.csv`;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+    };
 }
 
 /**
@@ -484,45 +484,45 @@ function saveBlobToFileCallback(accountName, transactionCallback) {
  * @returns {Promise<PageInfo>}
  */
 async function detectPageType() {
-  /**
-   * @type {PageInfo}
-   */
-  let pageInfo = {
-    isTransactionsPage: false,
-    transactionFiltersQuery: null,
-    buttonCallback: null,
-  };
+    /**
+     * @type {PageInfo}
+     */
+    let pageInfo = {
+        isTransactionsPage: false,
+        transactionFiltersQuery: null,
+        buttonCallback: null,
+    };
 
-  let pathParts = window.location.pathname.split("/");
-  if (pathParts[pathParts.length - 1] !== "transactions") {
+    let pathParts = window.location.pathname.split("/");
+    if (pathParts[pathParts.length - 1] !== "transactions") {
+        return pageInfo;
+    } else {
+        pageInfo.isTransactionsPage = true;
+    }
+
+    let accountsIdx = pathParts.findIndex((v) => v === "accounts");
+
+    let accountType = pathParts[accountsIdx + 1];
+    let accountId = pathParts[accountsIdx + 2];
+
+    // Handling different types of accounts
+    if (accountType === "credit") {
+        pageInfo.transactionFiltersQuery = `div[data-sentry-source-file="transactions-filters.view.tsx"]`;
+        pageInfo.buttonCallback = saveBlobToFileCallback(
+            // Looks like credit account cannot have custom name, hardcoding it
+            "Credit",
+            async () => await creditTransactions(accountId),
+        );
+    } else if (accountType === "savings") {
+        let accountName = await savingsAccountName(accountId);
+        pageInfo.transactionFiltersQuery = `main > div.MuiBox-root`;
+        pageInfo.buttonCallback = saveBlobToFileCallback(
+            accountName,
+            async () => await savingsTransactions(accountId),
+        );
+    }
+
     return pageInfo;
-  } else {
-    pageInfo.isTransactionsPage = true;
-  }
-
-  let accountsIdx = pathParts.findIndex((v) => v === "accounts");
-
-  let accountType = pathParts[accountsIdx + 1];
-  let accountId = pathParts[accountsIdx + 2];
-
-  // Handling different types of accounts
-  if (accountType === "credit") {
-    pageInfo.transactionFiltersQuery = `div[data-sentry-source-file="transactions-filters.view.tsx"]`;
-    pageInfo.buttonCallback = saveBlobToFileCallback(
-      // Looks like credit account cannot have custom name, hardcoding it
-      "Credit",
-      async () => await creditTransactions(accountId),
-    );
-  } else if (accountType === "savings") {
-    let accountName = await savingsAccountName(accountId);
-    pageInfo.transactionFiltersQuery = `main > div.MuiBox-root`;
-    pageInfo.buttonCallback = saveBlobToFileCallback(
-      accountName,
-      async () => await savingsTransactions(accountId),
-    );
-  }
-
-  return pageInfo;
 }
 
 /**
@@ -530,43 +530,43 @@ async function detectPageType() {
  * @returns {Promise<void>}
  */
 async function keepButtonShown() {
-  // Early exit, to avoid unnecessary requests if already injected
-  if (document.querySelector(`div#${downloadButtonId}`)) {
-    return;
-  }
+    // Early exit, to avoid unnecessary requests if already injected
+    if (document.querySelector(`div#${downloadButtonId}`)) {
+        return;
+    }
 
-  const pageInfo = await detectPageType();
-  if (!pageInfo.isTransactionsPage) {
-    return;
-  }
-  const transactionFilters = document.querySelector(
-    pageInfo.transactionFiltersQuery,
-  );
-  if (!transactionFilters) {
-    return;
-  }
+    const pageInfo = await detectPageType();
+    if (!pageInfo.isTransactionsPage) {
+        return;
+    }
+    const transactionFilters = document.querySelector(
+        pageInfo.transactionFiltersQuery,
+    );
+    if (!transactionFilters) {
+        return;
+    }
 
-  // Intentional duplicate, avoiding race condidion on detectPageType call
-  if (document.querySelector(`div#${downloadButtonId}`)) {
-    return;
-  }
-  addDownloadButton(transactionFilters, pageInfo.buttonCallback);
+    // Intentional duplicate, avoiding race condidion on detectPageType call
+    if (document.querySelector(`div#${downloadButtonId}`)) {
+        return;
+    }
+    addDownloadButton(transactionFilters, pageInfo.buttonCallback);
 }
 
-(async function () {
-  // Keeping track of DOM modifications to detect when "Transactions Filter" button will reappear
-  const observer = new MutationObserver(async (mutations) => {
-    for (const _ of mutations) {
-      await keepButtonShown();
-    }
-  });
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
+(async function() {
+    // Keeping track of DOM modifications to detect when "Transactions Filter" button will reappear
+    const observer = new MutationObserver(async (mutations) => {
+        for (const _ of mutations) {
+            await keepButtonShown();
+        }
+    });
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+    });
 
-  // Try running on load if there are no mutations for some reason
-  window.addEventListener("load", async () => {
-    await keepButtonShown();
-  });
+    // Try running on load if there are no mutations for some reason
+    window.addEventListener("load", async () => {
+        await keepButtonShown();
+    });
 })();
