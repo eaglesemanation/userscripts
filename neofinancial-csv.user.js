@@ -72,9 +72,14 @@ const creditTransactionQuery = `
 
 /**
  * @param {string} accountId - credit account ID
+ * @param {[any]?} filters
  * @returns {Promise<[Transaction]>}
  */
-async function creditTransactions(accountId) {
+async function creditTransactions(accountId, filters) {
+    if (!filters) {
+        filters = [];
+    }
+
     let transactions = [];
     let hasNextPage = true;
     let cursor = undefined;
@@ -93,7 +98,7 @@ async function creditTransactions(accountId) {
                     creditAccountId: accountId,
                     input: {
                         cursor: cursor,
-                        filter: [],
+                        filter: filters,
                         limit: 1000,
                         sort: {
                             direction: "DESC",
@@ -178,9 +183,14 @@ const savingsTransactionQuery = `
 
 /**
  * @param {string} accountId - savings account ID
+ * @param {[any]?} filters
  * @returns {Promise<[Transaction]>}
  */
-async function savingsTransactions(accountId) {
+async function savingsTransactions(accountId, filters) {
+    if (!filters) {
+        filters = [];
+    }
+
     let transactions = [];
     let hasNextPage = true;
     let cursor = undefined;
@@ -199,7 +209,7 @@ async function savingsTransactions(accountId) {
                     savingsAccountId: accountId,
                     input: {
                         cursor: cursor,
-                        filter: [],
+                        filter: filters,
                         limit: 1000,
                         sort: {
                             direction: "DESC",
@@ -378,7 +388,7 @@ function transactionsToCsvBlob(transactions) {
 }
 
 // ID for quickly verifying if button was already injected
-const downloadButtonId = "export-transactions-csv";
+const exportCsvId = "export-transactions-csv";
 
 /**
  * Copied style of a credit payment button
@@ -415,54 +425,118 @@ const buttonStyle = {
 };
 
 /**
- * @callback TransactionCallback
- * @returns {Promise<[Transaction]>}
- */
-
-/**
  * Inserts a CSV export button next to transaction filters button
  *
  * @param {Element?} filtersElement
- * @param {Funcion} buttonCallback
+ * @param {AccountInfo?} accountInfo
  */
-function addDownloadButton(filtersElement, buttonCallback) {
-    if (filtersElement === null || buttonCallback === null) {
+function addDownloadButtons(filtersElement, accountInfo) {
+    if (!filtersElement || !accountInfo) {
         return;
     }
 
-    let exportButton = document.createElement("button");
-    exportButton.innerText = "Export transactions as CSV";
-    exportButton.onclick = buttonCallback;
-    Object.assign(exportButton.style, buttonStyle);
-    let exportButtonBox = document.createElement("div");
-    exportButtonBox.className = "MuiBox-root";
-    exportButtonBox.appendChild(exportButton);
-    exportButtonBox.id = downloadButtonId;
+    let csvExportRow = document.createElement("div");
+    csvExportRow.id = exportCsvId;
+    csvExportRow.style.display = "flex";
+    csvExportRow.style.alignItems = "center";
+    csvExportRow.style.gap = "1em";
 
-    filtersElement.insertBefore(exportButtonBox, filtersElement.children[0]);
+    let csvExportText = document.createElement("div");
+    csvExportText.innerText = "Export as CSV:";
+    csvExportText.style.fontFamily = buttonStyle.fontFamily;
+    csvExportText.style.fontWeight = "400";
+    csvExportRow.appendChild(csvExportText);
+
+    const now = new Date();
+    const buttons = [
+        {
+            text: "This Month",
+            fromDate: new Date(now.getFullYear(), now.getMonth(), 1),
+        },
+        {
+            text: "Last 3 Months",
+            fromDate: new Date(now.getFullYear(), now.getMonth() - 3, 1),
+        },
+        {
+            text: "All",
+            fromDate: null,
+        },
+    ];
+
+    for (const button of buttons) {
+        let filters = [];
+        if (button.fromDate) {
+            filters = [
+                {
+                    field: "authorizationProcessedAt",
+                    operator: "GTE",
+                    type: "DATE",
+                    value: button.fromDate.toISOString(),
+                },
+            ];
+        }
+
+        let exportButton = document.createElement("button");
+        exportButton.innerText = button.text;
+        exportButton.onclick = saveBlobToFileCallback(
+            accountInfo,
+            filters,
+            button.fromDate,
+        );
+        Object.assign(exportButton.style, buttonStyle);
+        let exportButtonBox = document.createElement("div");
+        exportButtonBox.className = "MuiBox-root";
+        exportButtonBox.appendChild(exportButton);
+
+        csvExportRow.appendChild(exportButtonBox);
+    }
+
+    filtersElement.insertBefore(csvExportRow, filtersElement.children[0]);
     filtersElement.style.alignItems = "center";
+    filtersElement.style.justifyContent = "space-between";
     filtersElement.style.gap = "1em";
 }
+
+/**
+ * @callback TransactionCallback
+ * @param {string} accountId
+ * @param {[any]} filters
+ * @returns {Promise<[Transaction]>}
+ */
 
 /**
  * Creates a wraper function that calls to transaction callback, then downloads resulting blob as a file by
  * injecting anchor element into a body, clicking it and removing it.
  *
- * @param {string} accountName - Prefix to output file
- * @param {TransactionCallback?} transactionCallback - Async function that will return array of transactions
+ * @param {AccountInfo} accountInfo
+ * @param {[any]?} filters
+ * @param {Date?} fromDate
  * @return {Function}
  */
-function saveBlobToFileCallback(accountName, transactionCallback) {
+function saveBlobToFileCallback(accountInfo, filters, fromDate) {
+    if (!filters) {
+        filters = [];
+    }
+
     return async () => {
         console.log("Fetching Transactions");
-        let blob = transactionsToCsvBlob(await transactionCallback());
+        let blob = transactionsToCsvBlob(
+            await accountInfo.transactionsCallback(accountInfo.id, filters),
+        );
         console.log("Writing transactions into a file");
         let blobUrl = URL.createObjectURL(blob);
+
         let now = new Date();
+        let nowStr = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+        let timeFrame = "";
+        if (fromDate) {
+            timeFrame += `From ${fromDate.getFullYear()}-${fromDate.getMonth() + 1}-${fromDate.getDate()} `;
+        }
+        timeFrame += `Up to ${nowStr}`;
 
         let link = document.createElement("a");
         link.href = blobUrl;
-        link.download = `Neo ${accountName} Transactions ${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}.csv`;
+        link.download = `Neo ${accountInfo.name} Transactions ${timeFrame}.csv`;
         link.style.display = "none";
         document.body.appendChild(link);
         link.click();
@@ -476,8 +550,16 @@ function saveBlobToFileCallback(accountName, transactionCallback) {
  *
  * @typedef {Object} PageInfo
  * @property {boolean} isTransactionsPage
- * @property {string?} transactionFiltersQuery
- * @property {Function?} buttonCallback
+ * @property {string?} transactionFiltersQuery - CSS query for a place where to put a button
+ * @property {AccountInfo?} accountInfo
+ */
+
+/**
+ * @typedef {Object} AccountInfo
+ * @property {string} id
+ * @property {string} name
+ * @property {"credit"|"savings"} type
+ * @property {TransactionCallback} transactionsCallback
  */
 
 /**
@@ -490,7 +572,7 @@ async function detectPageType() {
     let pageInfo = {
         isTransactionsPage: false,
         transactionFiltersQuery: null,
-        buttonCallback: null,
+        accountInfo: null,
     };
 
     let pathParts = window.location.pathname.split("/");
@@ -508,18 +590,21 @@ async function detectPageType() {
     // Handling different types of accounts
     if (accountType === "credit") {
         pageInfo.transactionFiltersQuery = `div[data-sentry-source-file="transactions-filters.view.tsx"]`;
-        pageInfo.buttonCallback = saveBlobToFileCallback(
+        pageInfo.accountInfo = {
+            id: accountId,
+            type: accountType,
             // Looks like credit account cannot have custom name, hardcoding it
-            "Credit",
-            async () => await creditTransactions(accountId),
-        );
+            name: "Credit",
+            transactionsCallback: creditTransactions,
+        };
     } else if (accountType === "savings") {
-        let accountName = await savingsAccountName(accountId);
         pageInfo.transactionFiltersQuery = `main > div.MuiBox-root`;
-        pageInfo.buttonCallback = saveBlobToFileCallback(
-            accountName,
-            async () => await savingsTransactions(accountId),
-        );
+        pageInfo.accountInfo = {
+            id: accountId,
+            type: accountType,
+            name: await savingsAccountName(accountId),
+            transactionsCallback: savingsTransactions,
+        };
     }
 
     return pageInfo;
@@ -531,7 +616,7 @@ async function detectPageType() {
  */
 async function keepButtonShown() {
     // Early exit, to avoid unnecessary requests if already injected
-    if (document.querySelector(`div#${downloadButtonId}`)) {
+    if (document.querySelector(`div#${exportCsvId}`)) {
         return;
     }
 
@@ -547,10 +632,10 @@ async function keepButtonShown() {
     }
 
     // Intentional duplicate, avoiding race condidion on detectPageType call
-    if (document.querySelector(`div#${downloadButtonId}`)) {
+    if (document.querySelector(`div#${exportCsvId}`)) {
         return;
     }
-    addDownloadButton(transactionFilters, pageInfo.buttonCallback);
+    addDownloadButtons(transactionFilters, pageInfo.accountInfo);
 }
 
 (async function() {
