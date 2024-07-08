@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://member.neofinancial.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.0
+// @version     1.1
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds a button to transactions page that exports all transactions into a CSV file. Developed for use with "Actual" budgeting tool, will probably work fine with any other importer.
