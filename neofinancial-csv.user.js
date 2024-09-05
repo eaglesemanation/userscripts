@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://member.neofinancial.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.1
+// @version     1.2
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds a button to transactions page that exports all transactions into a CSV file. Developed for use with "Actual" budgeting tool, will probably work fine with any other importer.
@@ -340,7 +340,7 @@ function transactionsToCsvBlob(transactions) {
                 break;
             default:
                 console.log(
-                    `${dateStr} transaction [${transaction.category}] has unexpected category. Object logged below. Skipping`,
+                    `[csv-export] ${dateStr} transaction [${transaction.category}] has unexpected category. Object logged below. Skipping`,
                 );
                 console.log(transaction);
                 continue;
@@ -348,7 +348,7 @@ function transactionsToCsvBlob(transactions) {
 
         if (!payee) {
             console.log(
-                `${dateStr} transaction [${transaction.category}] could not figure out payee. Object logged below. Skipping`,
+                `[csv-export] ${dateStr} transaction [${transaction.category}] could not figure out payee. Object logged below. Skipping`,
             );
             console.log(transaction);
             continue;
@@ -375,7 +375,7 @@ function transactionsToCsvBlob(transactions) {
             // Catching unhandled status values.
             if (!["DECLINED"].includes(transaction.status)) {
                 console.log(
-                    `${dateStr} transaction [${transaction.category}] from "${payee}" has unexpected status: ${transaction.status}. Object logged below. Skipping`,
+                    `[csv-export] ${dateStr} transaction [${transaction.category}] from "${payee}" has unexpected status: ${transaction.status}. Object logged below. Skipping`,
                 );
                 console.log(transaction);
             }
@@ -519,11 +519,11 @@ function saveBlobToFileCallback(accountInfo, filters, fromDate) {
     }
 
     return async () => {
-        console.log("Fetching Transactions");
+        console.log("[csv-export] Fetching Transactions");
         let blob = transactionsToCsvBlob(
             await accountInfo.transactionsCallback(accountInfo.id, filters),
         );
-        console.log("Writing transactions into a file");
+        console.log("[csv-export] Writing transactions into a file");
         let blobUrl = URL.createObjectURL(blob);
 
         let now = new Date();
@@ -598,13 +598,17 @@ async function detectPageType() {
             transactionsCallback: creditTransactions,
         };
     } else if (accountType === "savings") {
-        pageInfo.transactionFiltersQuery = `main > div.MuiBox-root`;
+        pageInfo.transactionFiltersQuery = `div[data-sentry-source-file="transactions-filters.view.tsx"]`;
         pageInfo.accountInfo = {
             id: accountId,
             type: accountType,
             name: await savingsAccountName(accountId),
             transactionsCallback: savingsTransactions,
         };
+    }
+
+    if (pageInfo.accountInfo !== null) {
+        console.log(`[csv-export] Transactions history page of type '${accountType}' detected`);
     }
 
     return pageInfo;
@@ -628,6 +632,7 @@ async function keepButtonShown() {
         pageInfo.transactionFiltersQuery,
     );
     if (!transactionFilters) {
+        console.log("[csv-export] Could not find UI element specifying transaction history filters, aborting");
         return;
     }
 
