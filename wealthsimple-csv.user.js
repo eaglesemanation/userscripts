@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://my.wealthsimple.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.0
+// @version     1.1
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds export buttons to Activity feed and to Account specific activity. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature.
@@ -52,7 +52,7 @@ function getPageInfo() {
       return emptyInfo;
     }
     info.anchor = anchor[0];
-    info.readyPredicate = () => info.anchor.parentNode.children.length >= 2;
+    info.readyPredicate = () => info.anchor.parentNode.children.length >= 1;
   } else if (pathParts.length === 3 && pathParts[2] === "activity") {
     const threeLinesSvgPath =
       "M14 8c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1s.4-1 1-1h10c.6 0 1 .4 1 1Zm1-6H1c-.6 0-1 .4-1 1s.4 1 1 1h14c.6 0 1-.4 1-1s-.4-1-1-1Zm-4 10H5c-.6 0-1 .4-1 1s.4 1 1 1h6c.6 0 1-.4 1-1s-.4-1-1-1Z";
@@ -64,7 +64,7 @@ function getPageInfo() {
       return emptyInfo;
     }
     info.anchor = anchor[0];
-    info.readyPredicate = () => info.anchor.parentNode.children.length >= 2;
+    info.readyPredicate = () => info.anchor.parentNode.children.length >= 1;
   } else {
     // Didn't match any expected page
     return emptyInfo;
@@ -91,10 +91,11 @@ async function keepButtonShown() {
   if (!pageInfo.pageType) {
     return;
   }
-  if (!(pageInfo.readyPredicate && pageInfo.readyPredicate())) {
+  if (!pageInfo.readyPredicate || !pageInfo.readyPredicate()) {
     return;
   }
 
+  console.log("[csv-export] Adding buttons");
   addButtons(pageInfo);
 }
 
@@ -188,12 +189,12 @@ function addButtons(pageInfo) {
     exportButton.innerText = button.text;
     exportButton.className = "export-csv-button";
     exportButton.onclick = async () => {
-      console.log("Fetching account details");
+      console.log("[csv-export] Fetching account details");
       let accountsInfo = await accountFinancials();
 
       let transactions = [];
 
-      console.log("Fetching transactions");
+      console.log("[csv-export] Fetching transactions");
       if (pageInfo.pageType === "account-details") {
         let pathParts = window.location.pathname.split("/");
         accountIds = [pathParts[3]];
@@ -220,6 +221,25 @@ function addButtons(pageInfo) {
   anchorParent.insertBefore(buttonRow, pageInfo.anchor);
   anchorParent.style.gap = "1em";
   pageInfo.anchor.style.marginLeft = "0";
+
+  let currencyToggle = anchorParent.querySelector(
+    `div:has(> ul > li > button)`,
+  );
+  if (currencyToggle) {
+    // NOTE: Patch to currency toggle, for some reason it sets width="100%", and it's ugly
+    for (const s of document.styleSheets) {
+      for (const r of s.rules) {
+        if (
+          currencyToggle.matches(r.selectorText) &&
+          r.style.width === "100%"
+        ) {
+          currencyToggle.classList.remove(r.selectorText.substring(1));
+        }
+      }
+    }
+    // NOTE: Swap with currency toggle, just looks nicer
+    buttonRow.parentNode.insertBefore(buttonRow, currencyToggle);
+  }
 }
 
 /**
@@ -276,6 +296,36 @@ const activityFeedItemFragment = `
     assetQuantity
     aftOriginatorName
     aftTransactionCategory
+    aftTransactionType
+    canonicalId
+    currency
+    identityId
+    institutionName
+    p2pHandle
+    p2pMessage
+    spendMerchant
+    securityId
+    billPayCompanyName
+    billPayPayeeNickname
+    redactedExternalAccountNumber
+    opposingAccountId
+    status
+    strikePrice
+    contractType
+    expiryDate
+    chequeNumber
+    provisionalCreditAmount
+    primaryBlocker
+    interestRate
+    frequency
+    counterAssetSymbol
+    rewardProgram
+    counterPartyCurrency
+    counterPartyCurrencyAmount
+    counterPartyName
+    fxRate
+    fees
+    reference
   }
 `;
 
@@ -644,43 +694,78 @@ async function accountTransactionsToCsvBlob(transactions) {
     let category = "";
 
     switch (type) {
-      case "INTEREST":
+      case "INTEREST": {
         payee = "Wealthsimple";
         notes = "Interest";
         break;
-      case "WITHDRAWAL/E_TRANSFER":
+      }
+      case "DEPOSIT/E_TRANSFER": {
+        payee = transaction.eTransferEmail;
+        notes = `INTERAC e-Transfer from ${transaction.eTransferName}`;
+        break;
+      }
+      case "WITHDRAWAL/E_TRANSFER": {
         payee = transaction.eTransferEmail;
         notes = `INTERAC e-Transfer to ${transaction.eTransferName}`;
         break;
-      case "DIVIDEND/DIY_DIVIDEND":
+      }
+      case "DIVIDEND/DIY_DIVIDEND": {
         payee = transaction.assetSymbol;
         notes = `Received dividend from ${transaction.assetSymbol}`;
         break;
-      case "DIY_BUY/DIVIDEND_REINVESTMENT":
+      }
+      case "DIY_BUY/DIVIDEND_REINVESTMENT": {
         payee = transaction.assetSymbol;
         notes = `Reinvested dividend into ${transaction.assetQuantity} ${transaction.assetSymbol}`;
         break;
-      case "DIY_BUY/MARKET_ORDER":
+      }
+      case "DIY_BUY/MARKET_ORDER": {
         payee = transaction.assetSymbol;
         notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol}`;
         break;
-      case "DEPOSIT/AFT":
+      }
+      case "DEPOSIT/AFT": {
         payee = transaction.aftOriginatorName;
         notes = `Direct deposit from ${transaction.aftOriginatorName}`;
         category = transaction.aftTransactionCategory;
         break;
-      case "DEPOSIT/EFT":
+      }
+      case "WITHDRAWAL/AFT": {
+        payee = transaction.aftOriginatorName;
+        notes = `Direct deposit to ${transaction.aftOriginatorName}`;
+        category = transaction.aftTransactionCategory;
+        break;
+      }
+      case "DEPOSIT/EFT": {
         let info = await fundsTransfer(transaction.externalCanonicalId);
         let bankInfo = info.source.bankAccount;
         payee = `${bankInfo.institutionName} ${bankInfo.nickname || bankInfo.accountName} ${bankInfo.accountNumber || ""}`;
         notes = `Direct deposit from ${payee}`;
         break;
-      default:
+      }
+      case "WITHDRAWAL/EFT": {
+        let info = await fundsTransfer(transaction.externalCanonicalId);
+        let bankInfo = info.source.bankAccount;
+        payee = `${bankInfo.institutionName} ${bankInfo.nickname || bankInfo.accountName} ${bankInfo.accountNumber || ""}`;
+        notes = `Direct deposit to ${payee}`;
+        break;
+      }
+      case "INTERNAL_TRANSFER/SOURCE":
+      case "INTERNAL_TRANSFER/DESTINATION":
+      case "SPEND/PREPAID": {
         console.log(
-          `${dateStr} transaction [${type}] has unexpected type. Object logged below. Skipping`,
+          `[csv-export] ${dateStr} transaction [${type}] does not have notes defined. Please report on greasyfork.org to make transaction details more useful.`,
+        );
+        console.log(transaction);
+        break;
+      }
+      default: {
+        console.log(
+          `[csv-export] ${dateStr} transaction [${type}] has unexpected type, skipping it. Please report on greasyfork.org for assistanse.`,
         );
         console.log(transaction);
         continue;
+      }
     }
 
     let amount = transaction.amount;
