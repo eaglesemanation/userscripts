@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://my.wealthsimple.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.1
+// @version     1.2
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds export buttons to Activity feed and to Account specific activity. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature.
@@ -191,6 +191,10 @@ function addButtons(pageInfo) {
     exportButton.onclick = async () => {
       console.log("[csv-export] Fetching account details");
       let accountsInfo = await accountFinancials();
+      let accountNicknames = accountsInfo.reduce((acc, v) => {
+        acc[v.id] = v.nickname;
+        return acc;
+      }, {});
 
       let transactions = [];
 
@@ -210,7 +214,7 @@ function addButtons(pageInfo) {
         transactions = await activityFeedItems(accountIds, button.fromDate);
       }
 
-      let blobs = await transactionsToCsvBlobs(transactions);
+      let blobs = await transactionsToCsvBlobs(transactions, accountNicknames);
       saveBlobsToFiles(blobs, accountsInfo, button.fromDate);
     };
 
@@ -273,12 +277,16 @@ function getOauthCookie() {
  * @property {string} occurredAt
  * @property {string} type
  * @property {string} subType
- * @property {string} eTransferEmail
- * @property {string} eTransferName
- * @property {string} assetSymbol
- * @property {string} assetQuantity
- * @property {string} aftOriginatorName
- * @property {string} aftTransactionCategory
+ * @property {string?} eTransferEmail
+ * @property {string?} eTransferName
+ * @property {string?} assetSymbol
+ * @property {string?} assetQuantity
+ * @property {string?} aftOriginatorName
+ * @property {string?} aftTransactionCategory
+ * @property {string?} opposingAccountId
+ * @property {string?} spendMerchant
+ * @property {string?} billPayCompanyName
+ * @property {string?} billPayPayeeNickname
  */
 
 const activityFeedItemFragment = `
@@ -657,9 +665,10 @@ async function fundsTransfer(transferId) {
 
 /**
  * @param {[Transaction]} transactions
+ * @param {{[string]: string}} accountNicknames
  * @returns {Promise<{[string]: Blob}>}
  */
-async function transactionsToCsvBlobs(transactions) {
+async function transactionsToCsvBlobs(transactions, accountNicknames) {
   let accTransactions = transactions.reduce((acc, transaction) => {
     const id = transaction.accountId;
     (acc[id] = acc[id] || []).push(transaction);
@@ -667,16 +676,20 @@ async function transactionsToCsvBlobs(transactions) {
   }, {});
   let accBlobs = {};
   for (let acc in accTransactions) {
-    accBlobs[acc] = await accountTransactionsToCsvBlob(accTransactions[acc]);
+    accBlobs[acc] = await accountTransactionsToCsvBlob(
+      accTransactions[acc],
+      accountNicknames,
+    );
   }
   return accBlobs;
 }
 
 /**
  * @param {[Transaction]} transactions
+ * @param {{[string]: string}} accountNicknames
  * @returns {Promise<Blob>}
  */
-async function accountTransactionsToCsvBlob(transactions) {
+async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
   let csv = `"Date","Payee","Notes","Category","Amount"\n`;
   for (const transaction of transactions) {
     let date = new Date(transaction.occurredAt);
@@ -750,13 +763,25 @@ async function accountTransactionsToCsvBlob(transactions) {
         notes = `Direct deposit to ${payee}`;
         break;
       }
-      case "INTERNAL_TRANSFER/SOURCE":
-      case "INTERNAL_TRANSFER/DESTINATION":
+      case "INTERNAL_TRANSFER/SOURCE": {
+        payee = accountNicknames[transaction.opposingAccountId];
+        notes = `Internal transfer to ${payee}`;
+        break;
+      }
+      case "INTERNAL_TRANSFER/DESTINATION": {
+        payee = accountNicknames[transaction.opposingAccountId];
+        notes = `Internal transfer from ${payee}`;
+        break;
+      }
       case "SPEND/PREPAID": {
-        console.log(
-          `[csv-export] ${dateStr} transaction [${type}] does not have notes defined. Please report on greasyfork.org to make transaction details more useful.`,
-        );
-        console.log(transaction);
+        payee = transaction.spendMerchant;
+        notes = `Prepaid to ${payee}`;
+        break;
+      }
+      case "WITHDRAWAL/BILL_PAY": {
+        payee = transaction.billPayPayeeNickname;
+        notes = `Bill payment to ${transaction.billPayCompanyName}`;
+        category = "bill";
         break;
       }
       default: {
