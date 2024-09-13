@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://my.wealthsimple.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.2
+// @version     1.3
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds export buttons to Activity feed and to Account specific activity. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature.
@@ -801,7 +801,10 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
     let entry = `"${dateStr}","${payee}","${notes}","${category}","${amount}"`;
     csv += `${entry}\n`;
   }
-  return new Blob([csv], { type: "text/csv" });
+
+  // Signals to some apps that file encoded with UTF-8
+  const BOM = "\uFEFF";
+  return new Blob([BOM, csv], { type: "text/csv;charset=utf-8" });
 }
 
 /**
