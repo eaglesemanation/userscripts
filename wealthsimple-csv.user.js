@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://my.wealthsimple.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.3
+// @version     1.4
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds export buttons to Activity feed and to Account specific activity. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature.
@@ -43,7 +43,7 @@ function getPageInfo() {
   if (pathParts.length === 4 && pathParts[2] === "account-details") {
     // All classes within HTML have been obfuscated/minified, using icons as a starting point, in hope that they don't change that much.
     const threeDotsSvgPath =
-      "M5.333 11.997c0 1.466-1.2 2.666-2.666 2.666A2.675 2.675 0 0 1 0 11.997C0 10.53 1.2 9.33 2.667 9.33c1.466 0 2.666 1.2 2.666 2.667Zm16-2.667a2.675 2.675 0 0 0-2.666 2.667c0 1.466 1.2 2.666 2.666 2.666 1.467 0 2.667-1.2 2.667-2.666 0-1.467-1.2-2.667-2.667-2.667ZM12 9.33a2.675 2.675 0 0 0-2.667 2.667c0 1.466 1.2 2.666 2.667 2.666 1.467 0 2.667-1.2 2.667-2.666 0-1.467-1.2-2.667-2.667-2.667Z";
+      "M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM19 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z";
     const threeDotsButtonContainerQuery = `div:has(> div > button svg > path[d="${threeDotsSvgPath}"])`;
 
     info.pageType = "account-details";
@@ -54,8 +54,7 @@ function getPageInfo() {
     info.anchor = anchor[0];
     info.readyPredicate = () => info.anchor.parentNode.children.length >= 1;
   } else if (pathParts.length === 3 && pathParts[2] === "activity") {
-    const threeLinesSvgPath =
-      "M14 8c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1s.4-1 1-1h10c.6 0 1 .4 1 1Zm1-6H1c-.6 0-1 .4-1 1s.4 1 1 1h14c.6 0 1-.4 1-1s-.4-1-1-1Zm-4 10H5c-.6 0-1 .4-1 1s.4 1 1 1h6c.6 0 1-.4 1-1s-.4-1-1-1Z";
+    const threeLinesSvgPath = "M2 4h12M4.667 8h6.666m-4.666 4h2.666";
     const threeLinesButtonContainerQuery = `div:has(> button svg > path[d="${threeLinesSvgPath}"])`;
 
     info.pageType = "activity";
@@ -712,6 +711,21 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
         notes = "Interest";
         break;
       }
+      case "INTEREST/FPL_INTEREST": {
+        payee = "Wealthsimple";
+        notes = `Interest`;
+        break;
+      }
+      case "REIMBURSEMENT/ATM": {
+        payee = "Wealthsimple";
+        notes = `ATM Reimbursement`;
+        break;
+      }
+      case "P2P_PAYMENT/SEND": {
+        payee = transaction.p2pHandle;
+        notes = `ATM Reimbursement`;
+        break;
+      }
       case "DEPOSIT/E_TRANSFER": {
         payee = transaction.eTransferEmail;
         notes = `INTERAC e-Transfer from ${transaction.eTransferName}`;
@@ -727,6 +741,10 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
         notes = `Received dividend from ${transaction.assetSymbol}`;
         break;
       }
+
+      /*
+       * Stock Transactions
+       */
       case "DIY_BUY/DIVIDEND_REINVESTMENT": {
         payee = transaction.assetSymbol;
         notes = `Reinvested dividend into ${transaction.assetQuantity} ${transaction.assetSymbol}`;
@@ -737,6 +755,76 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
         notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol}`;
         break;
       }
+      case "DIY_BUY/RECURRING_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol} using recurring order`;
+        break;
+      }
+      case "DIY_BUY/LIMIT_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol} using limit order`;
+        break;
+      }
+      case "DIY_BUY/FRACTIONAL_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol} using fractional order`;
+        break;
+      }
+      case "DIY_SELL/MARKET_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Sold ${transaction.assetQuantity} ${transaction.assetSymbol} using market order`;
+        break;
+      }
+      case "DIY_SELL/LIMIT_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Sold ${transaction.assetQuantity} ${transaction.assetSymbol} using limit order`;
+        break;
+      }
+      case "DIY_SELL/FRACTIONAL_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Sold ${transaction.assetQuantity} ${transaction.assetSymbol} using fractional order`;
+        break;
+      }
+
+      /*
+       * Crypto Transactions
+       */
+      case "CRYPTO_BUY/MARKET_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol}`;
+        break;
+      }
+      case "CRYPTO_BUY/RECURRING_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol} using recurring order`;
+        break;
+      }
+      case "CRYPTO_BUY/LIMIT_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol} using limit order`;
+        break;
+      }
+      case "CRYPTO_BUY/FRACTIONAL_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Bought ${transaction.assetQuantity} ${transaction.assetSymbol} using fractional order`;
+        break;
+      }
+      case "CRYPTO_SELL/MARKET_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Sold ${transaction.assetQuantity} ${transaction.assetSymbol} using market order`;
+        break;
+      }
+      case "CRYPTO_SELL/LIMIT_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Sold ${transaction.assetQuantity} ${transaction.assetSymbol} using limit order`;
+        break;
+      }
+      case "CRYPTO_SELL/FRACTIONAL_ORDER": {
+        payee = transaction.assetSymbol;
+        notes = `Sold ${transaction.assetQuantity} ${transaction.assetSymbol} using fractional order`;
+        break;
+      }
+
       case "DEPOSIT/AFT": {
         payee = transaction.aftOriginatorName;
         notes = `Direct deposit from ${transaction.aftOriginatorName}`;
@@ -751,14 +839,28 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
       }
       case "DEPOSIT/EFT": {
         let info = await fundsTransfer(transaction.externalCanonicalId);
-        let bankInfo = info.source.bankAccount;
+        let bankInfo = info?.source?.bankAccount;
+        if (!bankInfo) {
+          console.error(
+            "[csv-export] bankInfo was undefined in EFT withdraw:",
+            transaction,
+          );
+          continue;
+        }
         payee = `${bankInfo.institutionName} ${bankInfo.nickname || bankInfo.accountName} ${bankInfo.accountNumber || ""}`;
         notes = `Direct deposit from ${payee}`;
         break;
       }
       case "WITHDRAWAL/EFT": {
         let info = await fundsTransfer(transaction.externalCanonicalId);
-        let bankInfo = info.source.bankAccount;
+        let bankInfo = info?.source?.bankAccount;
+        if (!bankInfo) {
+          console.error(
+            "[csv-export] bankInfo was undefined in EFT withdraw:",
+            transaction,
+          );
+          continue;
+        }
         payee = `${bankInfo.institutionName} ${bankInfo.nickname || bankInfo.accountName} ${bankInfo.accountNumber || ""}`;
         notes = `Direct deposit to ${payee}`;
         break;
@@ -785,7 +887,7 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
         break;
       }
       default: {
-        console.log(
+        console.error(
           `[csv-export] ${dateStr} transaction [${type}] has unexpected type, skipping it. Please report on greasyfork.org for assistanse.`,
         );
         console.log(transaction);
