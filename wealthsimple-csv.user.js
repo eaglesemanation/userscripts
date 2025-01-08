@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name        Wealthsimple export transactions as CSV
+// @name        Wealthsimple export transactions as CSV 
 // @namespace   Violentmonkey Scripts
 // @match       https://my.wealthsimple.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.4
+// @version     1.4.1
 // @license     MIT
 // @author      eaglesemanation
-// @description Adds export buttons to Activity feed and to Account specific activity. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature.
+// @description Adds export buttons to Activity feed and to Account specific activity. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature. Added credit card parsing.
 // ==/UserScript==
 
 /**
@@ -562,6 +562,8 @@ async function accountFinancials() {
     if (!nickname) {
       if (e.node.unifiedAccountType === "CASH") {
         nickname = "Cash";
+      } else if (e.node.unifiedAccountType === "CREDIT_CARD") {
+        nickname = "Credit Card";
       } else if (self_directed_re.test(e.node.unifiedAccountType)) {
         let found = e.node.unifiedAccountType.match(self_directed_re);
         nickname = found.groups.name;
@@ -571,7 +573,7 @@ async function accountFinancials() {
           nickname = "Non-registered";
         }
       } else {
-        nickname = "Unknown";
+        nickname = "Unknown"; 
       }
     }
     return {
@@ -837,6 +839,12 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
         category = transaction.aftTransactionCategory;
         break;
       }
+      case "FUNDS_CONVERSION": {
+        payee = "Wealthsimple";
+        notes = `Funds converted to ${transaction.currency}`;
+        category = transaction.aftTransactionCategory;
+        break;
+      }
       case "DEPOSIT/EFT": {
         let info = await fundsTransfer(transaction.externalCanonicalId);
         let bankInfo = info?.source?.bankAccount;
@@ -886,6 +894,22 @@ async function accountTransactionsToCsvBlob(transactions, accountNicknames) {
         category = "bill";
         break;
       }
+      case "CREDIT_CARD/PURCHASE": {
+        payee = transaction.spendMerchant;
+        notes = `Credit card purchase at ${payee}`;
+        break;
+      }
+      case "CREDIT_CARD/REFUND": {
+        payee = transaction.spendMerchant; /*"Wealthsimple";*/
+        notes = "Credit card refund";
+        break;
+      }
+      case "CREDIT_CARD/PAYMENT": {
+        payee = "Wealthsimple";
+        notes = "Credit card payment";
+        break;
+      }
+
       default: {
         console.error(
           `[csv-export] ${dateStr} transaction [${type}] has unexpected type, skipping it. Please report on greasyfork.org for assistanse.`,
