@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://www1.royalbank.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.0
+// @version     1.0.1
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds export buttons to Summary and Details pages. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature.
@@ -282,7 +282,7 @@ function addButtons(pageInfo) {
  */
 async function accountListSummary() {
   let respJson = await GM.xmlHttpRequest({
-    url: "https://www1.royalbank.com/sgw5/omniapi/product-summary-presentation-service-v3/v3/accountListSummary",
+    url: "https://www1.royalbank.com/sgw5/digital/product-summary-presentation-service-v3/v3/accountListSummary",
     method: "GET",
     responseType: "json",
     headers: {
@@ -390,7 +390,7 @@ async function debitAccountTransactions(encryptedAccountNumber, fromDate) {
   let offsetKey = undefined;
   while (hasNextPage) {
     let respJson = await GM.xmlHttpRequest({
-      url: `https://www1.royalbank.com/sgw5/omniapi/transaction-presentation-service-v3-dbb/v3/search/pda/account/${encodeURIComponent(encryptedAccountNumber)}`,
+      url: `https://www1.royalbank.com/sgw5/digital/transaction-presentation-service-v3-dbb/v3/search/pda/account/${encodeURIComponent(encryptedAccountNumber)}`,
       method: "POST",
       responseType: "json",
       headers: {
@@ -436,7 +436,7 @@ async function creditAccountTransactions(encryptedAccountNumber, fromDate) {
   let offsetKey = undefined;
   while (hasNextPage) {
     let respJson = await GM.xmlHttpRequest({
-      url: `https://www1.royalbank.com/sgw5/omniapi/transaction-presentation-service-v3-dbb/v3/search/cc/posted/account/${encodeURIComponent(encryptedAccountNumber)}`,
+      url: `https://www1.royalbank.com/sgw5/digital/transaction-presentation-service-v3-dbb/v3/search/cc/posted/account/${encodeURIComponent(encryptedAccountNumber)}`,
       method: "POST",
       responseType: "json",
       headers: {
