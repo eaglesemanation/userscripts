@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://member.neofinancial.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.4
+// @version     1.4.1
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds a button to transactions page that exports all transactions into a CSV file. Developed for use with "Actual" budgeting tool, will probably work fine with any other importer.
@@ -594,7 +594,7 @@ async function detectPageType() {
 
     // Handling different types of accounts
     if (accountType === "credit") {
-        pageInfo.transactionFiltersQuery = `div[data-sentry-source-file="transactions-filters.view.tsx"]`;
+        pageInfo.transactionFiltersQuery = `div:has(> button > svg > path[d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"])`;
         pageInfo.accountInfo = {
             id: accountId,
             type: accountType,
@@ -603,7 +603,7 @@ async function detectPageType() {
             transactionsCallback: creditTransactions,
         };
     } else if (accountType === "savings") {
-        pageInfo.transactionFiltersQuery = `div[data-sentry-source-file="transactions-filters.view.tsx"]`;
+        pageInfo.transactionFiltersQuery = `div:has(> button > svg > path[d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"])`;
         pageInfo.accountInfo = {
             id: accountId,
             type: accountType,
