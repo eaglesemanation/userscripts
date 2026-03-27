@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://member.neofinancial.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.4.1
+// @version     1.5.0
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds a button to transactions page that exports all transactions into a CSV file. Developed for use with "Actual" budgeting tool, will probably work fine with any other importer.
@@ -42,11 +42,13 @@
  * GraphQL query for credit account transactions
  */
 const creditTransactionQuery = `
-    query TransactionsList($input: CursorQueryInput!, $creditAccountId: ObjectID!) {
+    query TransactionsList($input: CreditAccountTransactionsRelativeQueryInput!, $creditAccountId: ObjectID!) {
       user {
         creditAccount(id: $creditAccountId) {
-          creditTransactionList(input: $input) {
-            cursor
+          creditAccountTransactions(input: $input) {
+            primaryCursor {
+              cursor
+            }
             hasNextPage
             results {
               description
@@ -97,11 +99,12 @@ async function creditTransactions(accountId, filters) {
                 variables: {
                     creditAccountId: accountId,
                     input: {
-                        cursor: cursor,
                         filter: filters,
                         limit: 1000,
-                        sort: {
-                            direction: "DESC",
+                        primaryCursor: {
+                            cursor: cursor,
+                            sort: "DESC",
+                            type: "DATE",
                             field: "authorizationProcessedAt",
                         },
                     },
@@ -110,9 +113,9 @@ async function creditTransactions(accountId, filters) {
         });
 
         let resp = JSON.parse(respJson.responseText);
-        let transactionList = resp.data.user.creditAccount.creditTransactionList;
+        let transactionList = resp.data.user.creditAccount.creditAccountTransactions;
         hasNextPage = transactionList.hasNextPage;
-        cursor = transactionList.cursor;
+        cursor = transactionList.primaryCursor.cursor;
         transactions = transactions.concat(transactionList.results);
     }
     return transactions;
@@ -153,11 +156,13 @@ const savingsTransactionQuery = `
       parentTransactionId
     }
 
-    query FilteredSortedSavingsTransactionList($input: CursorQueryInput!, $savingsAccountId: ObjectID!) {
+    query FilteredSortedSavingsTransactionList($input: SavingsAccountTransactionsRelativeQueryInput!, $savingsAccountId: ObjectID!) {
       user {
         savingsAccount(id: $savingsAccountId) {
-          savingsTransactionList(input: $input) {
-            cursor
+          savingsAccountTransactions(input: $input) {
+            primaryCursor {
+              cursor
+            }
             hasNextPage
             results {
               id
@@ -208,12 +213,13 @@ async function savingsTransactions(accountId, filters) {
                 variables: {
                     savingsAccountId: accountId,
                     input: {
-                        cursor: cursor,
                         filter: filters,
                         limit: 1000,
-                        sort: {
-                            direction: "DESC",
+                        primaryCursor: {
+                            cursor: cursor,
                             field: "authorizationProcessedAt",
+                            sort: "DESC",
+                            type: "DATE",
                         },
                     },
                 },
@@ -221,9 +227,9 @@ async function savingsTransactions(accountId, filters) {
         });
 
         let resp = JSON.parse(respJson.responseText);
-        let transactionList = resp.data.user.savingsAccount.savingsTransactionList;
+        let transactionList = resp.data.user.savingsAccount.savingsAccountTransactions;
         hasNextPage = transactionList.hasNextPage;
-        cursor = transactionList.cursor;
+        cursor = transactionList.primaryCursor.cursor;
         transactions = transactions.concat(transactionList.results);
     }
     return transactions;
@@ -274,6 +280,8 @@ async function savingsAccountName(accountId) {
  * @returns {Blob}
  */
 function transactionsToCsvBlob(transactions) {
+    let needAlert = false;
+
     let csv = `"Date","Payee","Notes","Category","Amount"\n`;
     for (const transaction of transactions) {
         let date = new Date(transaction.authorizationProcessedAt);
@@ -343,6 +351,7 @@ function transactionsToCsvBlob(transactions) {
                     `[csv-export] ${dateStr} transaction [${transaction.category}] has unexpected category. Object logged below. Skipping`,
                 );
                 console.log(transaction);
+                needAlert = true;
                 continue;
         }
 
@@ -351,6 +360,7 @@ function transactionsToCsvBlob(transactions) {
                 `[csv-export] ${dateStr} transaction [${transaction.category}] could not figure out payee. Object logged below. Skipping`,
             );
             console.log(transaction);
+            needAlert = true;
             continue;
         }
 
@@ -380,13 +390,17 @@ function transactionsToCsvBlob(transactions) {
                     `[csv-export] ${dateStr} transaction [${transaction.category}] from "${payee}" has unexpected status: ${transaction.status}. Object logged below. Skipping`,
                 );
                 console.log(transaction);
+                needAlert = true;
             }
             continue;
         }
 
         csv += `${entry}\n`;
     }
-
+    
+    if (needAlert) {
+        alert("During CSV export some errors were encountered. Please take a look at developer console output for more details.")
+    }
     // Signifies to some apps that file is UTF-8 encoded
     const BOM = "\uFEFF";
     return new Blob([BOM, csv], { type: "text/csv;charset=utf-8" });
@@ -594,7 +608,7 @@ async function detectPageType() {
 
     // Handling different types of accounts
     if (accountType === "credit") {
-        pageInfo.transactionFiltersQuery = `div:has(> button > svg > path[d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"])`;
+        pageInfo.transactionFiltersQuery = `div:has(> button svg > path[d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"])`;
         pageInfo.accountInfo = {
             id: accountId,
             type: accountType,
@@ -603,7 +617,7 @@ async function detectPageType() {
             transactionsCallback: creditTransactions,
         };
     } else if (accountType === "savings") {
-        pageInfo.transactionFiltersQuery = `div:has(> button > svg > path[d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"])`;
+        pageInfo.transactionFiltersQuery = `div:has(> button svg > path[d="M3 17v2h6v-2zM3 5v2h10V5zm10 16v-2h8v-2h-8v-2h-2v6zM7 9v2H3v2h4v2h2V9zm14 4v-2H11v2zm-6-4h2V7h4V5h-4V3h-2z"])`;
         pageInfo.accountInfo = {
             id: accountId,
             type: accountType,
