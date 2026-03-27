@@ -3,7 +3,7 @@
 // @namespace   Violentmonkey Scripts
 // @match       https://my.wealthsimple.com/*
 // @grant       GM.xmlHttpRequest
-// @version     1.5
+// @version     1.6
 // @license     MIT
 // @author      eaglesemanation
 // @description Adds export buttons to Activity feed and to Account specific activity. They will export transactions within certain timeframe into CSV, options are "This Month", "Last 3 Month", "All". This should provide better transaction description than what is provided by preexisting CSV export feature.
@@ -20,6 +20,11 @@
  * @property {HTMLElement?} anchor - Element to which buttons will be "attached". Buttons should be inserted before it.
  * @property {ReadyPredicate?} readyPredicate - Verifies if ready to insert
  */
+
+const arrowSvgPath = "M8.363 3.363a.9.9 0 0 1 1.274 0l4 4a.9.9 0 0 1 0 1.274l-4 4a.9.9 0 0 1-1.274-1.274L10.826 8.9H3a.9.9 0 0 1 0-1.8h7.826L8.363 4.637a.9.9 0 0 1 0-1.274Z";
+
+const downloadSvgPath1 = "M8 7.1a.9.9 0 0 1 .9.9v3.826l.963-.963a.9.9 0 0 1 1.274 1.274l-2.5 2.5a.9.9 0 0 1-1.274 0l-2.5-2.5a.9.9 0 0 1 1.274-1.274l.963.963V8a.9.9 0 0 1 .9-.9Z";
+const downloadSvgPath2 = "M8 1.1c2.405 0 4.364 1.797 4.735 4.113 1.543.384 2.665 1.809 2.665 3.47 0 .781-.246 1.508-.667 2.1a.9.9 0 1 1-1.466-1.044c.208-.293.333-.657.333-1.055 0-1.003-.785-1.774-1.7-1.774a.9.9 0 0 1-.9-.9C11 4.27 9.633 2.9 8 2.9c-1.297 0-2.423.859-2.835 2.09a.9.9 0 0 1-.73.606C3.306 5.752 2.4 6.759 2.4 8.016c0 .485.135.933.367 1.31a.9.9 0 0 1-1.534.943A4.297 4.297 0 0 1 .6 8.016c0-1.941 1.282-3.601 3.058-4.094C4.421 2.265 6.068 1.1 8 1.1Z";
 
 /**
  * Figures out which paget we're currently on and where to attach buttons. Should not do any queries,
@@ -41,7 +46,7 @@ function getPageInfo() {
 
   let pathParts = window.location.pathname.split("/");
   if (pathParts.length === 4 && pathParts[2] === "account-details") {
-    const accountSelectorQuery = `div:has(> div > button svg > path[d="m6 12 4-4-4-4"])`;
+    const accountSelectorQuery = `div:has(> p + a svg > path[d="${arrowSvgPath}"])`;
     info.pageType = "account-details";
     let anchor = document.querySelectorAll(accountSelectorQuery);
     if (anchor.length !== 1) {
@@ -50,12 +55,13 @@ function getPageInfo() {
     info.anchor = anchor[0];
     info.readyPredicate = () => info.anchor.parentNode.children.length >= 1;
   } else if (pathParts.length === 3 && pathParts[2] === "activity") {
+    const activitySelectorQuery = `button:has(svg > path[d="${downloadSvgPath1}"] + path[d="${downloadSvgPath2}"])`;
     info.pageType = "activity";
-    let anchor = Array.from(document.querySelectorAll(`h1`)).find(el => el.textContent === "Activity");
-    if (anchor === undefined) {
+    let anchor = document.querySelectorAll(activitySelectorQuery);
+    if (anchor.length !== 1) {
       return emptyInfo;
     }
-    info.anchor = anchor;
+    info.anchor = anchor[0];
     info.readyPredicate = () => info.anchor.parentNode.children.length >= 1;
   } else {
     // Didn't match any expected page
@@ -118,9 +124,11 @@ function keepButtonShown() {
  */
 function themeButtons() {
   let buttons = document.querySelectorAll(`button.export-csv-button`);
-  let profileButton = document.querySelector(`button:has(svg > path[d="m6 9 6 6 6-6"])`);
+  let profileButton = document.querySelector(`button[aria-label="Profile and settings"]`);
   for (const button of buttons) {
     button.className = ["export-csv-button", profileButton.className].join(" ");
+    button.style.width = "auto";
+    button.style.padding = "12px";
   }
 }
 
@@ -137,6 +145,8 @@ function addButtons(pageInfo) {
   buttonRow.style.alignItems = "baseline";
   buttonRow.style.gap = "1em";
   buttonRow.style.marginLeft = "auto";
+  buttonRow.style.borderRight = "1px solid rgba(255,255,255,0.08)";
+  buttonRow.style.padding = "12px";
 
   let buttonRowText = document.createElement("span");
   buttonRowText.innerText = "Export Transactions as CSV:";
@@ -195,7 +205,7 @@ function addButtons(pageInfo) {
     buttonRow.appendChild(exportButton);
   }
 
-  pageInfo.anchor.after(buttonRow);
+  pageInfo.anchor.before(buttonRow);
   pageInfo.anchor.parentNode.style.gap = "1em";
   pageInfo.anchor.style.marginLeft = "0";
 
